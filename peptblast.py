@@ -50,20 +50,20 @@ argparser.add_argument('-s', action='store_true', required=False, help='Use blas
 argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
 argparser = argparser.parse_args()
 
-if not os.path.exists(sys.argv[1]+".pin"):
+if not os.path.exists(argparser.db+".pin"):
     call("makeblastdb -dbtype prot -in "+argparser.db, shell=True)
 
-
-blast_cl = NcbiblastpCommandline(query = argparser.pep,
+if not os.path.exists(argparser.pep+".xml"):
+	blast_cl = NcbiblastpCommandline(query = argparser.pep,
                                  db = argparser.db,
                                  task = "blastp-short" if argparser.s else "blastp",
                                  outfmt = 5,
                                  evalue = 0.1,
                                  num_threads = 10,
                                 word_size = 2,
-                                 out = argparser.db+".xml"
+                                 out = argparser.pep+".xml"
                                 )
-stdout, stderr = blast_cl()
+	stdout, stderr = blast_cl()
 
 if argparser.s:
     count = 0
