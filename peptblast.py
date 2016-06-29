@@ -94,11 +94,13 @@ else:
     for qresult in qresults:
         for hit in qresult:
             for hsp in hit:
-		for v, c, p in encode(hsp.aln):
-		    if v=="1" and c>=5:
-			print( "5+ hit @ %i" % p, file = out)
-			print(hsp, file = out)
-			print('', file = out)
+                for v, c, p in encode(simstr(hsp.aln)):
+                    if v=="1" and c>=5:
+                        print( "5+ hit @ %i" % p, file = out)
+                        print(hsp.aln[:,p-20:p+20], file = out)
+                        print(simstr(hsp.aln)[p-20: p+20].replace("0", " ").replace("1", "+"),
+                              file = out)
+                        print('', file = out)
         
 
     out = open(argparser.pep+'.2.txt', 'w')
@@ -106,13 +108,16 @@ else:
     for qresult in qresults:
         for hit in qresult:
             for hsp in hit:
-		for t0, t1, t2 in thrids(encode(hsp.aln)):
-		    if t0[0] == "1":
-			assert t2[0] == "1"
-			assert t1[0] == "0"
-			if t0[1] >= argparser.leftmin and t2[1] >= argparser.rightmin and\
-				 (t0[1]+t2[1]) >= argparser.summin and t1[1] <= argparser.gapmax:
-			    if not ( argparser.supress and t0[1] >= 5 or t2[1] >= 5 ): 
-				print ("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], t0[2]), file = out)
-			    	print(hsp, file = out)
-			    	print('', file = out)
+                for t0, t1, t2 in thrids(encode(simstr(hsp.aln))):
+                    if t0[0] == "1":
+                        assert t2[0] == "1"
+                        assert t1[0] == "0"
+                        if t0[1] >= argparser.leftmin and t2[1] >= argparser.rightmin and\
+                             (t0[1]+t2[1]) >= argparser.summin and t1[1] <= argparser.gapmax:
+                            if not ( argparser.S and t0[1] >= 5 or t2[1] >= 5 ):
+                                p = t0[2]
+                                print ("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], p), file = out)
+                                print(hsp.aln[:,p-20:p+20], file = out)
+                                print(simstr(hsp.aln)[p-20: p+20].replace("0", " ").replace("1", "+"),
+                                      file = out)
+                                print('', file = out)
