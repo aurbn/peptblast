@@ -114,7 +114,7 @@ else:
                         assert t1[0] == "0"
                         if t0[1] >= argparser.leftmin and t2[1] >= argparser.rightmin and\
                              (t0[1]+t2[1]) >= argparser.summin and t1[1] <= argparser.gapmax:
-                            if not ( argparser.S and t0[1] >= 5 or t2[1] >= 5 ):
+                            if not ( argparser.S and (t0[1] >= 5 or t2[1] >= 5 )):
                                 p = t0[2]
                                 print ("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], p), file = out)
                                 print(hsp.aln[:,p-20:p+20], file = out)
