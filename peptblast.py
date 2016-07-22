@@ -8,7 +8,6 @@ from argparse import ArgumentParser
 import itertools
 import shutil
 import warnings
-import StringIO
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from Bio import SearchIO, SeqIO
@@ -16,10 +15,11 @@ with warnings.catch_warnings():
 TMP_DIR = "tmp_blast"
 
 
-def getfastafiles(dir):
+def getfiles(dir, extension):
     return (os.path.join(dir, f) for f in os.listdir(dir)
             if os.path.isfile(os.path.join(dir, f)) and
-            f.endswith(".fasta"))
+            f.endswith("."+extension))
+
 
 def simstr(alingment):
     res = []
@@ -63,50 +63,39 @@ def grouper(n, iterable):
             return
         yield chunk
 
-def process_blast_output(file, simple):
-        if simple:
-            count = 0
-            out1 = StringIO.StringIO()
-            qresults = SearchIO.parse(file, 'blast-xml')
-            for qresult in qresults:
-                for hit in qresult:
-                    for hsp in hit:
-                        if ((hsp.aln_span == 5 and (hsp.gap_num == 0) and
-                                 (hsp.aln_span == hsp.ident_num)) or (hsp.aln_span > 5)):
-                            count += 1
-                            print(hsp, file=out1)
-                            print('', file=out1)
-            out2 = StringIO.StringIO()
-            qresults = SearchIO.parse(file, 'blast-xml')
-            for qresult in qresults:
-                for hit in qresult:
-                    for hsp in hit:
-                        if (hsp.aln_span >= 5 and (hsp.gap_num == 0) and
-                                (hsp.aln_span == hsp.ident_num)):
-                            count += 1
-                            print(hsp, file=out2)
-                            print('', file=out2)
+
+def process_blast_output(file, simple, argparser):
+    qresults = SearchIO.parse(file, 'blast-xml')
+    if simple:
+        for qresult in qresults:
+            for hit in qresult:
+                for hsp in hit:
+                    if ((hsp.aln_span == 5 and (hsp.gap_num == 0) and
+                             (hsp.aln_span == hsp.ident_num)) or (hsp.aln_span > 5)):
+
+                        yield (str(hsp), None)
+                        yield ('\n', None)
+
+                for hsp in hit:
+                    if (hsp.aln_span >= 5 and (hsp.gap_num == 0) and
+                            (hsp.aln_span == hsp.ident_num)):
+                        yield (None ,str(hsp))
+                        yield (None, '\n')
     else:
-        count = 0
-        out1 = StringIO.StringIO()
-        qresults = SearchIO.parse(file, 'blast-xml')
+        print (file)
         for qresult in qresults:
             for hit in qresult:
                 for hsp in hit:
                     for v, c, p in encode(simstr(hsp.aln)):
                         if v == "1" and c >= 5:
-                            print("5+ hit @ %i" % p, file=out1)
-                            print(hsp.aln[:, p - 20:p + 20], file=out1)
+                            yield ("5+ hit @ %i" % p, None)
+                            yield (hsp.aln[:, p - 20:p + 20], None)
                             infs = simstr(hsp.aln)
                             infs = infs[:p - 1] + "#" * c + infs[p + c + 22:]
                             infs = infs[p - 20: p + 20].replace("0", " ").replace("1", "+")
-                            print(infs, file=out1)
-                            print('', file=out1)
+                            yield (infs, None)
+                            yield ('\n', None)
 
-        out2 = StringIO.StringIO()
-        qresults = SearchIO.parse(argparser.pep + ".xml", 'blast-xml')
-        for qresult in qresults:
-            for hit in qresult:
                 for hsp in hit:
                     for t0, t1, t2 in thrids(encode(simstr(hsp.aln))):
                         if t0[0] == "1":
@@ -116,11 +105,11 @@ def process_blast_output(file, simple):
                                             (t0[1] + t2[1]) >= argparser.summin and t1[1] <= argparser.gapmax:
                                 if not ( argparser.S and (t0[1] >= 5 or t2[1] >= 5 )):
                                     p = t0[2]
-                                    print("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], p), file=out2)
-                                    print(hsp.aln[:, p - 20:p + 20], file=out2)
-                                    print(simstr(hsp.aln)[p - 20: p + 20].replace("0", " ").replace("1", "+"),
-                                          file=out2)
-                                    print('', file=out2)
+                                    yield ("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], p), None)
+                                    yield (hsp.aln[:, p - 20:p + 20], None)
+                                    yield (simstr(hsp.aln)[p - 20: p + 20].replace("0", " ").replace("1", "+"),
+                                          None)
+                                    yield ('\n', None)
 
 
 
@@ -152,13 +141,14 @@ def main():
 
     chunksize = proc / argparser.threads
     inp = SeqIO.parse(open(argparser.pep), "fasta")
+
     # Write equal number of records for each thread
     for i, chunk in enumerate(grouper(chunksize, inp)):
         SeqIO.write(chunk, open(os.path.join(TMP_DIR, str(i)+".fasta"), "w"), "fasta")
 
     # Run `threads` number of blast commands in parallel
     processes = set()
-    for file in getfastafiles(TMP_DIR):
+    for file in getfiles(TMP_DIR, "fasta"):
         blast_cl = NcbiblastpCommandline(query=file,
                                          db=argparser.db,
                                          task="blastp-short" if argparser.s else "blastp",
@@ -168,6 +158,7 @@ def main():
                                          word_size=2,
                                          out= file.replace(".fasta", ".xml")
         )
+
         print(str(blast_cl))
         processes.add(subprocess.Popen(str(blast_cl), shell=True))
         if len(processes) >= argparser.threads:
@@ -175,6 +166,16 @@ def main():
             processes.difference_update([
                 p for p in processes if p.poll() is not None])
 
+    out1 = open(argparser.pep + "1.txt", "w")
+    out2 = open(argparser.pep + "2.txt", "w")
+    for file in getfiles(TMP_DIR, "xml"):
+        for s1, s2 in process_blast_output(file, argparser.s, argparser):
+            if s1 is not None:
+                out1.write(s1)
+            if s2 is not None:
+                out2.write(s2)
+    out1.close()
+    out2.close()
 
 
 if __name__ == "__main__":
