@@ -220,7 +220,7 @@ def main():
 
 
     with open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out1, \
-         open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out2:
+         open(argparser.pep + "_" + argparser.db + "_2.txt", "w") as out2:
         for file in getfiles(TMP_DIR, "xml"):
             print ("Reading " + file)
             for s1, s2 in process_blast_output(file, argparser.s, argparser):
