@@ -21,9 +21,9 @@ def getfiles(dir, extension):
             f.endswith("."+extension))
 
 
-def simstr(alingment):
+def simstr(alignment):
     res = []
-    for i, j in zip(*alingment):
+    for i, j in zip(*alignment):
         if i == j:
             res.append("1")
         else:
@@ -72,46 +72,76 @@ def process_blast_output(file, simple, argparser):
                 for hsp in hit:
                     if ((hsp.aln_span == 5 and (hsp.gap_num == 0) and
                              (hsp.aln_span == hsp.ident_num)) or (hsp.aln_span > 5)):
-
                         yield (str(hsp), None)
-                        yield ('\n', None)
+                        yield ('\n\n', None)
 
                 for hsp in hit:
                     if (hsp.aln_span >= 5 and (hsp.gap_num == 0) and
                             (hsp.aln_span == hsp.ident_num)):
-                        yield (None ,str(hsp))
-                        yield (None, '\n')
+                        yield (None, str(hsp))
+                        yield (None, '\n\n')
     else:
         for qresult in qresults:
             for hit in qresult:
                 for hsp in hit:
                     for v, c, p in encode(simstr(hsp.aln)):
                         if v == "1" and c >= 5:
-                            lines = []
-                            lines.append("5+ hit @ %i" % p)
-                            lines.append(str(hsp.aln[:, p - 20:p + 20]))
-                            infs = simstr(hsp.aln)
-                            infs = infs[:p - 1] + "#" * c + infs[p + c + 22:]
-                            infs = infs[p - 20: p + 20].replace("0", " ").replace("1", "+")
-                            lines.append(str(infs))
-                            lines.append('\n')
-                            yield (lines, None)
-
+                            yield (format_alignment(hsp, p, c), None)
                 for hsp in hit:
                     for t0, t1, t2 in thrids(encode(simstr(hsp.aln))):
                         if t0[0] == "1":
+                            assert (t0[2] < t1[2] < t2[2])
                             assert t2[0] == "1"
                             assert t1[0] == "0"
                             if t0[1] >= argparser.leftmin and t2[1] >= argparser.rightmin and \
                                             (t0[1] + t2[1]) >= argparser.summin and t1[1] <= argparser.gapmax:
                                 if not ( argparser.S and (t0[1] >= 5 or t2[1] >= 5 )):
-                                    p = t0[2]
-                                    lines = []
-                                    lines.append("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], p))
-                                    lines.append(str(hsp.aln[:, p - 20:p + 20]))
-                                    lines.append(simstr(hsp.aln)[p - 20: p + 20].replace("0", " ").replace("1", "+"))
-                                    lines.append('\n')
-                                    yield (None, lines)
+                                    yield (None, format_alignment(hsp, t0[2], t0[1], t2[2], t2[1]))
+
+
+def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=50):
+    assert not (pos2 is None) ^ (len2 is None)
+    qstr = str(hsp.query.seq.lower())
+    hstr = str(hsp.hit.seq.lower())
+    sstr = str(hsp.aln_annotation['similarity'].lower())
+    lines = []
+
+    if pos2 is None:  # 5+hit
+        lines.append("%i length hit at %i\n" % (len1, pos1))
+        l1 = len(qstr)
+        qstr = qstr[:pos1-1]+qstr[pos1-1:pos1+len1-1].upper()+qstr[pos1+len1-1:]
+        hstr = hstr[:pos1-1]+hstr[pos1-1:pos1+len1-1].upper()+hstr[pos1+len1-1:]
+        sstr = sstr[:pos1-1]+sstr[pos1-1:pos1+len1-1].upper()+sstr[pos1+len1-1:]
+        assert l1 == len(qstr)
+    else: # complex hit
+        lines.append("%i/%i/%i hit at %i\n" % (len1, pos2-(pos1+len1), len2, pos1))
+        l1 = len(qstr)
+        # TODO: fix bug with end-line alignments
+        qstr = qstr[:pos1-1]+qstr[pos1-1:pos1+len1-1].upper()+qstr[pos1+len1-1:pos2-1]+qstr[pos2-1:pos2+len2-1].upper()+qstr[pos2+len2-1:]
+        hstr = hstr[:pos1-1]+hstr[pos1-1:pos1+len1-1].upper()+hstr[pos1+len1-1:pos2-1]+hstr[pos2-1:pos2+len2-1].upper()+hstr[pos2+len2-1:]
+        sstr = sstr[:pos1-1]+sstr[pos1-1:pos1+len1-1].upper()+sstr[pos1+len1-1:pos2-1]+sstr[pos2-1:pos2+len2-1].upper()+sstr[pos2+len2-1:]
+        assert l1 == len(qstr)
+
+    if pos1 > rightgap:
+        qstr = qstr[pos1-rightgap:]
+        hstr = hstr[pos1-rightgap:]
+        sstr = sstr[pos1-rightgap:]
+    if len(sstr) > maxlen:
+        # TODO: check if match more than maxlen
+        qstr = qstr[:maxlen]
+        hstr = hstr[:maxlen]
+        sstr = sstr[:maxlen]
+
+    qstr = qstr + "\t" + hsp.query_id + "\t" + hsp.query_description
+    hstr = hstr + "\t" + hsp.hit_id + "\t" + hsp.hit_description
+    qstr += '\n'
+    lines.append(qstr)
+    sstr += '\n'
+    lines.append(sstr)
+    hstr += '\n\n'
+    lines.append(hstr)
+
+    return lines
 
 
 
@@ -171,7 +201,7 @@ def main():
             processes.difference_update([
                 p for p in processes if p.poll() is not None])
 
-    #Pure magic, don't touch it
+    # Pure magic, don't touch it
     subprocess.call("sleep 5", shell=True)
 
     out1 = open(argparser.pep + "1.txt", "w")
