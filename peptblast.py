@@ -206,17 +206,15 @@ def main():
             p for p in processes if p.poll() is not None])
 
 
-    out1 = open(argparser.pep + "1.txt", "w")
-    out2 = open(argparser.pep + "2.txt", "w")
-    for file in getfiles(TMP_DIR, "xml"):
-        print ("Reading " + file)
-        for s1, s2 in process_blast_output(file, argparser.s, argparser):
-            if s1 is not None:
-                out1.writelines(s1)
-            if s2 is not None:
-                out2.writelines(s2)
-    out1.close()
-    out2.close()
+    with open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out1, \
+         open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out2:
+        for file in getfiles(TMP_DIR, "xml"):
+            print ("Reading " + file)
+            for s1, s2 in process_blast_output(file, argparser.s, argparser):
+                if s1 is not None:
+                    out1.writelines(s1)
+                if s2 is not None:
+                    out2.writelines(s2)
 
 
 if __name__ == "__main__":
