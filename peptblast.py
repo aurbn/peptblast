@@ -146,7 +146,6 @@ def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=
     return lines
 
 
-
 def main():
     argparser = ArgumentParser(description="Peptide/protein blast helper tool")
     argparser.add_argument('--db', type=str, required=True, help="Database.fasta")
@@ -161,6 +160,7 @@ def main():
     argparser.add_argument('--wordsize', type=int, required=False, default=2, help="Blast word size")
     argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short version.')
     argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
+    argparser.add_argument('--keeptmp', action='store_true', required=False, help='Keep temporary files.')
     argparser = argparser.parse_args()
 
     if os.path.exists(TMP_DIR):
@@ -229,6 +229,9 @@ def main():
                 if s2 is not None:
                     out2.writelines(s2)
 
+
+    if not argparser.keeptmp:
+        shutil.rmtree(TMP_DIR)
 
 if __name__ == "__main__":
     main()
