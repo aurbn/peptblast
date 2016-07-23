@@ -82,19 +82,20 @@ def process_blast_output(file, simple, argparser):
                         yield (None ,str(hsp))
                         yield (None, '\n')
     else:
-        print (file)
         for qresult in qresults:
             for hit in qresult:
                 for hsp in hit:
                     for v, c, p in encode(simstr(hsp.aln)):
                         if v == "1" and c >= 5:
-                            yield ("5+ hit @ %i" % p, None)
-                            yield (hsp.aln[:, p - 20:p + 20], None)
+                            lines = []
+                            lines.append("5+ hit @ %i" % p)
+                            lines.append(str(hsp.aln[:, p - 20:p + 20]))
                             infs = simstr(hsp.aln)
                             infs = infs[:p - 1] + "#" * c + infs[p + c + 22:]
                             infs = infs[p - 20: p + 20].replace("0", " ").replace("1", "+")
-                            yield (infs, None)
-                            yield ('\n', None)
+                            lines.append(str(infs))
+                            lines.append('\n')
+                            yield (lines, None)
 
                 for hsp in hit:
                     for t0, t1, t2 in thrids(encode(simstr(hsp.aln))):
@@ -105,11 +106,12 @@ def process_blast_output(file, simple, argparser):
                                             (t0[1] + t2[1]) >= argparser.summin and t1[1] <= argparser.gapmax:
                                 if not ( argparser.S and (t0[1] >= 5 or t2[1] >= 5 )):
                                     p = t0[2]
-                                    yield ("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], p), None)
-                                    yield (hsp.aln[:, p - 20:p + 20], None)
-                                    yield (simstr(hsp.aln)[p - 20: p + 20].replace("0", " ").replace("1", "+"),
-                                          None)
-                                    yield ('\n', None)
+                                    lines = []
+                                    lines.append("%i/%i/%i hit @ %i" % (t0[1], t1[1], t2[1], p))
+                                    lines.append(str(hsp.aln[:, p - 20:p + 20]))
+                                    lines.append(simstr(hsp.aln)[p - 20: p + 20].replace("0", " ").replace("1", "+"))
+                                    lines.append('\n')
+                                    yield (None, lines)
 
 
 
@@ -159,21 +161,25 @@ def main():
                                          out= file.replace(".fasta", ".xml")
         )
 
-        print(str(blast_cl))
+        print ("Blasting " + file)
         processes.add(subprocess.Popen(str(blast_cl), shell=True))
         if len(processes) >= argparser.threads:
             os.wait()
             processes.difference_update([
                 p for p in processes if p.poll() is not None])
 
+    #Pure magic, don't touch it
+    subprocess.call("sleep 5", shell=True)
+
     out1 = open(argparser.pep + "1.txt", "w")
     out2 = open(argparser.pep + "2.txt", "w")
     for file in getfiles(TMP_DIR, "xml"):
+        print ("Reading " + file)
         for s1, s2 in process_blast_output(file, argparser.s, argparser):
             if s1 is not None:
-                out1.write(s1)
+                out1.writelines(s1)
             if s2 is not None:
-                out2.write(s2)
+                out2.writelines(s2)
     out1.close()
     out2.close()
 
