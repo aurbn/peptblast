@@ -169,7 +169,7 @@ def main():
         shutil.rmtree(TMP_DIR)
     os.mkdir(TMP_DIR)
 
-    db_name = os.path.join(TMP_DIR, argparser.pep)
+    db_name = os.path.join(TMP_DIR, argparser.db)
 
     subprocess.call("makeblastdb -dbtype prot -in " + argparser.db
                     + " -out " + db_name, shell=True)
