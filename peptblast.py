@@ -12,6 +12,8 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from Bio import SearchIO, SeqIO
 
+__version__ = "0.1"
+
 TMP_DIR = "tmp_blast"
 
 
