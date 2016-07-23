@@ -174,12 +174,13 @@ def main():
 
 
     # Determine number of records in fasta file
-    proc = subprocess.Popen("grep '>' " + argparser.pep + " | wc -l", shell=True,
+    nrec = subprocess.Popen("grep '>' " + argparser.pep + " | wc -l", shell=True,
                             stdout=subprocess.PIPE).communicate()[0]
-    proc = int(proc)
-    assert proc > 0 and proc < 100
+    nrec = int(nrec)
+    assert nrec > 0
 
-    chunksize = proc / argparser.threads
+    chunksize = nrec / argparser.threads
+    chunksize = chunksize if chunksize else nrec
     inp = SeqIO.parse(open(argparser.pep), "fasta")
 
     # Write equal number of records for each thread
