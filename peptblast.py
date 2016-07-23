@@ -157,6 +157,8 @@ def main():
     argparser.add_argument('--summin', type=int, required=False, default=6, help="Minimal total mathed length")
     argparser.add_argument('--gapmax', type=int, required=False, default=3, help="Minimal gap size")
     argparser.add_argument('--threads', type=int, required=False, default=4, help="Blast threads")
+    argparser.add_argument('--eval', type=float, required=False, help="Required e-value for blast, otherwise estimated")
+    argparser.add_argument('--wordsize', type=int, required=False, default=2, help="Blast word size")
     argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short version.')
     argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
     argparser = argparser.parse_args()
@@ -185,9 +187,12 @@ def main():
         SeqIO.write(chunk, open(os.path.join(TMP_DIR, str(i)+".fasta"), "w"), "fasta")
 
     # Estimate required e-value
-    filesize = os.path.getsize(argparser.db)
-    e_est = filesize*1./(20**argparser.cont)
-    print ("Estimated required evalue: %.2f" % e_est)
+    if argparser.eval is None:
+        filesize = os.path.getsize(argparser.db)
+        e_est = filesize*1./(20**argparser.cont)
+        print ("Estimated required evalue: %.2f" % e_est)
+    else:
+        e_est = argparser.eval
 
     # Run `threads` number of blast commands in parallel
     processes = set()
@@ -198,7 +203,7 @@ def main():
                                          outfmt=5,
                                          evalue=e_est,
                                          num_threads=1,
-                                         word_size=2,
+                                         word_size=argparser.wordsize,
                                          out= file.replace(".fasta", ".xml")
         )
 
