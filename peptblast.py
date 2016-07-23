@@ -70,13 +70,13 @@ def process_blast_output(file, simple, argparser):
         for qresult in qresults:
             for hit in qresult:
                 for hsp in hit:
-                    if ((hsp.aln_span == 5 and (hsp.gap_num == 0) and
-                             (hsp.aln_span == hsp.ident_num)) or (hsp.aln_span > 5)):
+                    if ((hsp.aln_span == argparser.cont and (hsp.gap_num == 0) and
+                             (hsp.aln_span == hsp.ident_num)) or (hsp.aln_span > argparser.cont)):
                         yield (str(hsp), None)
                         yield ('\n\n', None)
 
                 for hsp in hit:
-                    if (hsp.aln_span >= 5 and (hsp.gap_num == 0) and
+                    if (hsp.aln_span >= argparser.cont and (hsp.gap_num == 0) and
                             (hsp.aln_span == hsp.ident_num)):
                         yield (None, str(hsp))
                         yield (None, '\n\n')
@@ -85,7 +85,7 @@ def process_blast_output(file, simple, argparser):
             for hit in qresult:
                 for hsp in hit:
                     for v, c, p in encode(simstr(hsp.aln)):
-                        if v == "1" and c >= 5:
+                        if v == "1" and c >= argparser.cont:
                             yield (format_alignment(hsp, p, c), None)
                 for hsp in hit:
                     for t0, t1, t2 in thrids(encode(simstr(hsp.aln))):
@@ -94,8 +94,10 @@ def process_blast_output(file, simple, argparser):
                             assert t2[0] == "1"
                             assert t1[0] == "0"
                             if t0[1] >= argparser.leftmin and t2[1] >= argparser.rightmin and \
-                                            (t0[1] + t2[1]) >= argparser.summin and t1[1] <= argparser.gapmax:
-                                if not ( argparser.S and (t0[1] >= 5 or t2[1] >= 5 )):
+                               (t0[1] + t2[1]) >= argparser.summin and \
+                                t1[1] <= argparser.gapmax:
+                                if not (argparser.S and
+                                        (t0[1] >= argparser.cont or t2[1] >= argparser.cont)):
                                     yield (None, format_alignment(hsp, t0[2], t0[1], t2[2], t2[1]))
 
 
@@ -149,6 +151,7 @@ def main():
     argparser = ArgumentParser(description="Peptide/protein blast helper tool")
     argparser.add_argument('--db', type=str, required=True, help="Database.fasta")
     argparser.add_argument('--pep', type=str, required=True, help="Peptides.fasta")
+    argparser.add_argument('--cont', type=int, required=False, default=5, help="Minimal length of continuous fragment")
     argparser.add_argument('--leftmin', type=int, required=False, default=1, help="Minimal length of left fragment")
     argparser.add_argument('--rightmin', type=int, required=False, default=1, help="Minimal length of right fragment")
     argparser.add_argument('--summin', type=int, required=False, default=6, help="Minimal total mathed length")
@@ -181,6 +184,11 @@ def main():
     for i, chunk in enumerate(grouper(chunksize, inp)):
         SeqIO.write(chunk, open(os.path.join(TMP_DIR, str(i)+".fasta"), "w"), "fasta")
 
+    # Estimate required e-value
+    filesize = os.path.getsize(argparser.db)
+    e_est = filesize*1./(20**argparser.cont)
+    print ("Estimated required evalue: %.2f" % e_est)
+
     # Run `threads` number of blast commands in parallel
     processes = set()
     for file in getfiles(TMP_DIR, "fasta"):
@@ -188,7 +196,7 @@ def main():
                                          db=db_name,
                                          task="blastp-short" if argparser.s else "blastp",
                                          outfmt=5,
-                                         evalue=100,
+                                         evalue=e_est,
                                          num_threads=1,
                                          word_size=2,
                                          out= file.replace(".fasta", ".xml")
