@@ -200,9 +200,11 @@ def main():
             os.wait()
             processes.difference_update([
                 p for p in processes if p.poll() is not None])
+    while processes:
+        os.wait()
+        processes.difference_update([
+            p for p in processes if p.poll() is not None])
 
-    # Pure magic, don't touch it
-    subprocess.call("sleep 5", shell=True)
 
     out1 = open(argparser.pep + "1.txt", "w")
     out2 = open(argparser.pep + "2.txt", "w")
