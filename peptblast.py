@@ -128,13 +128,16 @@ def main():
     argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
     argparser = argparser.parse_args()
 
-    if not os.path.exists(argparser.db + ".pin"):
-        subprocess.call("makeblastdb -dbtype prot -in " + argparser.db, shell=True)
-
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
-
     os.mkdir(TMP_DIR)
+
+    db_name = os.path.join(TMP_DIR, argparser.pep)
+
+    subprocess.call("makeblastdb -dbtype prot -in " + argparser.db
+                    + " -out " + db_name, shell=True)
+
+
     # Determine number of records in fasta file
     proc = subprocess.Popen("grep '>' " + argparser.pep + " | wc -l", shell=True,
                             stdout=subprocess.PIPE).communicate()[0]
@@ -152,7 +155,7 @@ def main():
     processes = set()
     for file in getfiles(TMP_DIR, "fasta"):
         blast_cl = NcbiblastpCommandline(query=file,
-                                         db=argparser.db,
+                                         db=db_name,
                                          task="blastp-short" if argparser.s else "blastp",
                                          outfmt=5,
                                          evalue=100,
