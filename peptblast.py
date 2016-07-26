@@ -8,11 +8,12 @@ from argparse import ArgumentParser
 import itertools
 import shutil
 import warnings
+import operator
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from Bio import SearchIO, SeqIO
 
-__version__ = "0.1"
+__version__ = "0.2"
 
 TMP_DIR = "tmp_blast"
 
@@ -74,21 +75,19 @@ def process_blast_output(file, simple, argparser):
                 for hsp in hit:
                     if ((hsp.aln_span == argparser.cont and (hsp.gap_num == 0) and
                              (hsp.aln_span == hsp.ident_num)) or (hsp.aln_span > argparser.cont)):
-                        yield (str(hsp), None)
-                        yield ('\n\n', None)
+                        yield ([str(hsp), "\n\n"], None, hsp.aln_span)
 
                 for hsp in hit:
                     if (hsp.aln_span >= argparser.cont and (hsp.gap_num == 0) and
                             (hsp.aln_span == hsp.ident_num)):
-                        yield (None, str(hsp))
-                        yield (None, '\n\n')
+                        yield (None, [str(hsp), "\n\n"], hsp.aln_span)
     else:
         for qresult in qresults:
             for hit in qresult:
                 for hsp in hit:
                     for v, c, p in encode(simstr(hsp.aln)):
                         if v == "1" and c >= argparser.cont:
-                            yield (format_alignment(hsp, p, c), None)
+                            yield (format_alignment(hsp, p, c), None, c)
                 for hsp in hit:
                     for t0, t1, t2 in thrids(encode(simstr(hsp.aln))):
                         if t0[0] == "1":
@@ -100,7 +99,8 @@ def process_blast_output(file, simple, argparser):
                                 t1[1] <= argparser.gapmax:
                                 if not (argparser.S and
                                         (t0[1] >= argparser.cont or t2[1] >= argparser.cont)):
-                                    yield (None, format_alignment(hsp, t0[2], t0[1], t2[2], t2[1]))
+                                    yield (None, format_alignment(hsp, t0[2], t0[1], t2[2], t2[1]),
+                                           t0[1]+t2[1]-t1[1])
 
 
 def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=50):
@@ -214,8 +214,9 @@ def main():
     argparser.add_argument('--eval', type=float, required=False, help="Required e-value for blast, otherwise estimated")
     argparser.add_argument('--wordsize', type=int, required=False, default=2, help="Blast word size")
     argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short instead of blast.')
-    argparser.add_argument('--printold', action='store_true', required=False, help='Use old filtering/printting method.')
+    argparser.add_argument('--printold', action='store_true', required=False, help='Use old filtering/printing method.')
     argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
+    argparser.add_argument('--sort', action='store_true', required=False, help='Sort output (requires much more memory)')
     argparser.add_argument('--keeptmp', action='store_true', required=False, help='Keep temporary files.')
     argparser.add_argument('--usetmp', type=str, required=False, default= None, help="Use existing temporary directory"
                                                                                                      "Do not perform blast.")
@@ -245,16 +246,32 @@ def main():
         makeblastdb(argparser.db, db_name)
         parallel_blast(argparser, db_name)
 
+    results1 = []
+    results2 = []
 
     with open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out1, \
          open(argparser.pep + "_" + argparser.db + "_2.txt", "w") as out2:
         for file in getfiles(TMP_DIR, "xml"):
             print ("Reading " + file)
-            for s1, s2 in process_blast_output(file, argparser.printold, argparser):
+            for s1, s2, i in process_blast_output(file, argparser.printold, argparser):
                 if s1 is not None:
-                    out1.writelines(s1)
+                    if not argparser.sort:
+                        out1.writelines(s1)
+                    else:
+                        results1.append((s1, i))
                 if s2 is not None:
-                    out2.writelines(s2)
+                    if not argparser.sort:
+                        out2.writelines(s2)
+                    else:
+                        results2.append((s2, i))
+        if argparser.sort:
+            print ("Sorting results...")
+            results1.sort(key = operator.itemgetter(1), reverse=True)
+            results2.sort(key = operator.itemgetter(1), reverse=True)
+            for r, i in results1:
+                out1.writelines(r)
+            for r, i in results2:
+                out2.writelines(r)
 
 
     if not (argparser.keeptmp or argparser.usetmp):
