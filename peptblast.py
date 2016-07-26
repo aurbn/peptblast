@@ -148,34 +148,12 @@ def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=
     return lines
 
 
-def main():
-    argparser = ArgumentParser(description="Peptide/protein blast helper tool")
-    argparser.add_argument('--db', type=str, required=True, help="Database.fasta")
-    argparser.add_argument('--pep', type=str, required=True, help="Peptides.fasta")
-    argparser.add_argument('--cont', type=int, required=False, default=5, help="Minimal length of continuous fragment")
-    argparser.add_argument('--leftmin', type=int, required=False, default=3, help="Minimal length of left fragment")
-    argparser.add_argument('--rightmin', type=int, required=False, default=3, help="Minimal length of right fragment")
-    argparser.add_argument('--summin', type=int, required=False, default=8, help="Minimal total mathed length")
-    argparser.add_argument('--gapmax', type=int, required=False, default=3, help="Minimal gap size")
-    argparser.add_argument('--threads', type=int, required=False, default=4, help="Blast threads")
-    argparser.add_argument('--eval', type=float, required=False, help="Required e-value for blast, otherwise estimated")
-    argparser.add_argument('--wordsize', type=int, required=False, default=2, help="Blast word size")
-    argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short instead of blast.')
-    argparser.add_argument('--printold', action='store_true', required=False, help='Use old filtering/printting method.')
-    argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
-    argparser.add_argument('--keeptmp', action='store_true', required=False, help='Keep temporary files.')
-    argparser = argparser.parse_args()
-
-    if os.path.exists(TMP_DIR):
-        shutil.rmtree(TMP_DIR)
-    os.mkdir(TMP_DIR)
-
-    db_name = os.path.join(TMP_DIR, argparser.db)
-
-    subprocess.call("makeblastdb -dbtype prot -in " + argparser.db
-                    + " -out " + db_name, shell=True)
+def makeblastdb(infile, name):
+     subprocess.call("makeblastdb -dbtype prot -in " + infile
+                    + " -out " + name, shell=True)
 
 
+def parallel_blast(argparser, db_name):
     # Determine number of records in fasta file
     nrec = subprocess.Popen("grep '>' " + argparser.pep + " | wc -l", shell=True,
                             stdout=subprocess.PIPE).communicate()[0]
@@ -223,6 +201,51 @@ def main():
             p for p in processes if p.poll() is not None])
 
 
+def main():
+    argparser = ArgumentParser(description="Peptide/protein blast helper tool")
+    argparser.add_argument('--db', type=str, required=False, help="Database.fasta")
+    argparser.add_argument('--pep', type=str, required=False, help="Peptides.fasta")
+    argparser.add_argument('--cont', type=int, required=False, default=5, help="Minimal length of continuous fragment")
+    argparser.add_argument('--leftmin', type=int, required=False, default=3, help="Minimal length of left fragment")
+    argparser.add_argument('--rightmin', type=int, required=False, default=3, help="Minimal length of right fragment")
+    argparser.add_argument('--summin', type=int, required=False, default=8, help="Minimal total mathed length")
+    argparser.add_argument('--gapmax', type=int, required=False, default=3, help="Minimal gap size")
+    argparser.add_argument('--threads', type=int, required=False, default=4, help="Blast threads")
+    argparser.add_argument('--eval', type=float, required=False, help="Required e-value for blast, otherwise estimated")
+    argparser.add_argument('--wordsize', type=int, required=False, default=2, help="Blast word size")
+    argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short instead of blast.')
+    argparser.add_argument('--printold', action='store_true', required=False, help='Use old filtering/printting method.')
+    argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
+    argparser.add_argument('--keeptmp', action='store_true', required=False, help='Keep temporary files.')
+    argparser.add_argument('--usetmp', type=str, required=False, default= None, help="Use existing temporary directory"
+                                                                                                     "Do not perform blast.")
+
+    argparser = argparser.parse_args()
+
+    if argparser.usetmp is not None:
+        if os.path.isdir(argparser.usetmp):
+            argparser.pep = "pep"
+            argparser.db = [f.replace(".pin", "") for f in os.listdir(argparser.usetmp) if ".pin" in f][0]
+        else:
+            print("Wrong tmp directory!")
+            sys.exit(1)
+    else:
+        if (argparser.pep is None) or (argparser.pep is None):
+            print ("Provide query and database or use tmp dir!")
+            sys.exit(1)
+
+
+    if os.path.exists(TMP_DIR) and not argparser.usetmp:
+        shutil.rmtree(TMP_DIR)
+    elif not argparser.usetmp:
+        os.mkdir(TMP_DIR)
+
+    if not argparser.usetmp:
+        db_name = os.path.join(TMP_DIR, argparser.db)
+        makeblastdb(argparser.db, db_name)
+        parallel_blast(argparser, db_name)
+
+
     with open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out1, \
          open(argparser.pep + "_" + argparser.db + "_2.txt", "w") as out2:
         for file in getfiles(TMP_DIR, "xml"):
@@ -234,7 +257,7 @@ def main():
                     out2.writelines(s2)
 
 
-    if not argparser.keeptmp:
+    if not (argparser.keeptmp or argparser.usetmp):
         shutil.rmtree(TMP_DIR)
 
 if __name__ == "__main__":
