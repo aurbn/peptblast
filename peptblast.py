@@ -160,7 +160,8 @@ def main():
     argparser.add_argument('--threads', type=int, required=False, default=4, help="Blast threads")
     argparser.add_argument('--eval', type=float, required=False, help="Required e-value for blast, otherwise estimated")
     argparser.add_argument('--wordsize', type=int, required=False, default=2, help="Blast word size")
-    argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short version.')
+    argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short instead of blast.')
+    argparser.add_argument('--printold', action='store_true', required=False, help='Use old filtering/printting method.')
     argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
     argparser.add_argument('--keeptmp', action='store_true', required=False, help='Keep temporary files.')
     argparser = argparser.parse_args()
@@ -226,7 +227,7 @@ def main():
          open(argparser.pep + "_" + argparser.db + "_2.txt", "w") as out2:
         for file in getfiles(TMP_DIR, "xml"):
             print ("Reading " + file)
-            for s1, s2 in process_blast_output(file, argparser.s, argparser):
+            for s1, s2 in process_blast_output(file, argparser.printold, argparser):
                 if s1 is not None:
                     out1.writelines(s1)
                 if s2 is not None:
