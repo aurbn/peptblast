@@ -9,6 +9,7 @@ import itertools
 import shutil
 import warnings
 import operator
+import multiprocessing
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from Bio import SearchIO, SeqIO
@@ -201,6 +202,18 @@ def parallel_blast(argparser, db_name):
             p for p in processes if p.poll() is not None])
 
 
+def read_blast_xml((file, argparser)):
+    print("Reading " + file)
+    results1 = []
+    results2 = []
+    for s1, s2, i in process_blast_output(file, argparser.printold, argparser):
+        if s1 is not None:
+            results1.append((s1, i))
+        if s2 is not None:
+            results2.append((s2, i))
+    return (results1, results2)
+
+
 def main():
     argparser = ArgumentParser(description="Peptide/protein blast helper tool")
     argparser.add_argument('--db', type=str, required=False, help="Database.fasta")
@@ -216,7 +229,7 @@ def main():
     argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short instead of blast.')
     argparser.add_argument('--printold', action='store_true', required=False, help='Use old filtering/printing method.')
     argparser.add_argument('-S', action='store_true', required=False, help='Suppress 5+ hits in 2 file.')
-    argparser.add_argument('--sort', action='store_true', required=False, help='Sort output (requires much more memory)')
+    argparser.add_argument('--sort', action='store_true', required=False, help='Sort output.')
     argparser.add_argument('--keeptmp', action='store_true', required=False, help='Keep temporary files.')
     argparser.add_argument('--usetmp', type=str, required=False, default= None, help="Use existing temporary directory"
                                                                                                      "Do not perform blast.")
@@ -246,32 +259,23 @@ def main():
         makeblastdb(argparser.db, db_name)
         parallel_blast(argparser, db_name)
 
-    results1 = []
-    results2 = []
 
     with open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out1, \
          open(argparser.pep + "_" + argparser.db + "_2.txt", "w") as out2:
-        for file in getfiles(TMP_DIR, "xml"):
-            print ("Reading " + file)
-            for s1, s2, i in process_blast_output(file, argparser.printold, argparser):
-                if s1 is not None:
-                    if not argparser.sort:
-                        out1.writelines(s1)
-                    else:
-                        results1.append((s1, i))
-                if s2 is not None:
-                    if not argparser.sort:
-                        out2.writelines(s2)
-                    else:
-                        results2.append((s2, i))
+        pool = multiprocessing.Pool(processes=argparser.threads)
+        results1, results2 = zip(*pool.map(read_blast_xml, zip(getfiles(TMP_DIR, "xml"),
+                                               itertools.repeat(argparser))))
+        results1 = reduce(operator.add, results1, [])
+        results2 = reduce(operator.add, results2, [])
+
         if argparser.sort:
             print ("Sorting results...")
             results1.sort(key = operator.itemgetter(1), reverse=True)
             results2.sort(key = operator.itemgetter(1), reverse=True)
-            for r, i in results1:
-                out1.writelines(r)
-            for r, i in results2:
-                out2.writelines(r)
+        for r, i in results1:
+            out1.writelines(r)
+        for r, i in results2:
+            out2.writelines(r)
 
 
     if not (argparser.keeptmp or argparser.usetmp):
