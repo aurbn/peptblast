@@ -137,10 +137,10 @@ def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=
         hstr = hstr[:maxlen]
         sstr = sstr[:maxlen]
 
-    qstr = hsp.query_id + "\t[%i : %i]\t" % (hsp.query_start, hsp.query_end) +"\t" + hsp.query_description + '\n' \
+    qstr = hsp.query_id + "\t[%i : %i]\t" % (hsp.query_start, hsp.query_end) + hsp.query_description + '\n' \
            + qstr
     hstr = hstr + \
-           '\n' + hsp.hit_id + "\t[%i : %i]\t" % (hsp.hit_start, hsp.hit_end) + "\t" + hsp.hit_description
+           '\n' + hsp.hit_id + "\t[%i : %i]\t" % (hsp.hit_start, hsp.hit_end) + hsp.hit_description
     qstr += '\n'
     lines.append(qstr)
     sstr += '\n'
