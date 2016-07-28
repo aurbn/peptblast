@@ -104,7 +104,7 @@ def process_blast_output(file, simple, argparser):
                                            t0[1]+t2[1]-t1[1])
 
 
-def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=50):
+def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=100):
     assert not (pos2 is None) ^ (len2 is None)
     qstr = str(hsp.query.seq.lower())
     hstr = str(hsp.hit.seq.lower())
@@ -137,8 +137,10 @@ def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=
         hstr = hstr[:maxlen]
         sstr = sstr[:maxlen]
 
-    qstr = qstr + "\t" + hsp.query_id + "\t" + hsp.query_description
-    hstr = hstr + "\t" + hsp.hit_id + "\t" + hsp.hit_description
+    qstr = hsp.query_id + "\t[%i : %i]\t" % (hsp.query_start, hsp.query_end) +"\t" + hsp.query_description + '\n' \
+           + qstr
+    hstr = hstr + \
+           '\n' + hsp.hit_id + "\t[%i : %i]\t" % (hsp.hit_start, hsp.hit_end) + "\t" + hsp.hit_description
     qstr += '\n'
     lines.append(qstr)
     sstr += '\n'
