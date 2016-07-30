@@ -4,7 +4,18 @@ import os
 import tempfile
 import shutil
 from argparse import ArgumentParser
+import itertools
 from Bio import Entrez
+
+
+def grouper(n, iterable):
+    it = iter(iterable)
+    while True:
+        chunk = tuple(itertools.islice(it, n))
+        if not chunk:
+            return
+        yield chunk
+
 
 def main():
     argparser = ArgumentParser(description="Add gi annotation to peptblast output")
@@ -30,12 +41,16 @@ def main():
 
 
     ann = {}
+    gis = list(set(gis))
+    print("%i ids to convert" % len(gis ))
     print("Fetching data.")
-    data = Entrez.esummary(db="protein", id = ",".join(gis))
-    entrez = Entrez.read(data)
-    for e in entrez:
-        ann[e['Gi']] = e['Title']
-    print("%i ids fetched" % len(ann))
+
+    for ggis in grouper(1024, gis):
+        data = Entrez.esummary(db="protein", id = ",".join(ggis))
+        entrez = Entrez.read(data)
+        for e in entrez:
+            ann[e['Gi']] = e['Title']
+        print("%i ids fetched" % len(ann))
 
     print("Addinng annotation.")
     with open(argparser.infile) as f:
