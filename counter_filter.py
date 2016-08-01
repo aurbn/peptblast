@@ -1,4 +1,4 @@
-__author__ = 'urban'
+#!/usr/bin/python2
 
 import itertools
 from operator import itemgetter
