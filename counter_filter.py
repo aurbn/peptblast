@@ -32,6 +32,7 @@ def main():
 
 
     freqs = defaultdict(int)
+    descrs = {}
     chunks = defaultdict(list)
     for ch in grouper(7, open(argparser.infile).readlines()):
         if argparser.count == "query":
@@ -41,14 +42,18 @@ def main():
         else:
             exit(1)
         freqs[id_] += 1
+        descrs[id_] = ch[1].split('\t')[2].replace('\n', "")
         chunks[id_].append(ch)
 
     freqs = freqs.items()
     freqs.sort(key=itemgetter(1))
 
     with open(argparser.table, "w") as tab:
-        for f in freqs:
-            tab.write("%s\t%i\n" % f)
+        acc = 0
+        tab.write("Count\tCountSum\tID\tDescription\n")
+        for id_, f in freqs:
+            acc += f
+            tab.write("%i\t%i\t%s\t%s\n" % (f, acc, id_, descrs[id_]))
 
     if not argparser.nosort:
         if not argparser.nobk:
