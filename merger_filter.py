@@ -51,6 +51,8 @@ def main():
         cdict = defaultdict(list)
         tchunks = []
         for hitid, queryid, metric, ch in chunks:
+            hitid = hitid.split('|')[1].split('-')[0]
+            queryid = queryid.split('|')[1].split('-')[0]
             cdict[(hitid, queryid)].append((hitid, queryid, metric, ch))
         for k, v in cdict.items():
             maxs = -1000
