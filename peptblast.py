@@ -112,14 +112,16 @@ def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=
     lines = []
 
     if pos2 is None:  # 5+hit
-        lines.append("%i length hit at %i\n" % (len1, pos1))
+        lines.append("%i length hit at [%i:%i]\n" % (len1, pos1+hsp.query_start,
+                                                     len1+pos1+hsp.query_start ))
         l1 = len(qstr)
         qstr = qstr[:pos1-1]+qstr[pos1-1:pos1+len1-1].upper()+qstr[pos1+len1-1:]
         hstr = hstr[:pos1-1]+hstr[pos1-1:pos1+len1-1].upper()+hstr[pos1+len1-1:]
         sstr = sstr[:pos1-1]+sstr[pos1-1:pos1+len1-1].upper()+sstr[pos1+len1-1:]
         assert l1 == len(qstr)
     else: # complex hit
-        lines.append("%i/%i/%i hit at %i\n" % (len1, pos2-(pos1+len1), len2, pos1))
+        lines.append("%i/%i/%i hit at [%i:%i]\n" % (len1, pos2-(pos1+len1), len2, pos1+hsp.query_start,
+                                                    pos2+len2+hsp.query_start))
         l1 = len(qstr)
         # TODO: fix bug with end-line alignments
         qstr = qstr[:pos1-1]+qstr[pos1-1:pos1+len1-1].upper()+qstr[pos1+len1-1:pos2-1]+qstr[pos2-1:pos2+len2-1].upper()+qstr[pos2+len2-1:]
