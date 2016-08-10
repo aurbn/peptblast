@@ -48,8 +48,10 @@ def main():
             org = ch[5].split('\t')[2]
             if '[' in org:
                 org = org.split('[')[1]
-                org.replace(']', "")
-                orgfreqs[org] += 1
+                org = org.replace(']', "")
+                org = org.strip()
+                if org:
+                    orgfreqs[org] += 1
 
         freqs[id_] += 1
         descrs[id_] = ch[1].split('\t')[2].replace('\n', "")
