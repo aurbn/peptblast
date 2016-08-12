@@ -122,6 +122,10 @@ def main():
                     else:
                         exit(1)
 
+        freqs[id_] += 1
+        descrs[id_] = ch[1].split('\t')[2].replace('\n', "")
+        chunks[id_].append(ch)
+
 
     if argparser.table:
         with open(argparser.table, "w") as tab:
