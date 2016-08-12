@@ -66,9 +66,6 @@ def main():
         descrs[id_] = ch[1].split('\t')[2].replace('\n', "")
         chunks[id_].append(ch)
 
-    freqs = freqs.items()
-    freqs.sort(key=itemgetter(1))
-
     okorgs = []  #filtered organisms
     if argparser.taxfilter:
         taxfilters = {f for f in argparser.taxfilter.lower().split(',')}
@@ -121,11 +118,15 @@ def main():
                         id_ = ch[5].split('\t')[0]
                     else:
                         exit(1)
+            else:
+                id_="ORGANISM UNKNOWN"
+            freqs[id_] += 1
+            descrs[id_] = ch[1].split('\t')[2].replace('\n', "")
+            chunks[id_].append(ch)
 
-        freqs[id_] += 1
-        descrs[id_] = ch[1].split('\t')[2].replace('\n', "")
-        chunks[id_].append(ch)
 
+    freqs = freqs.items()
+    freqs.sort(key=itemgetter(1))
 
     if argparser.table:
         with open(argparser.table, "w") as tab:
