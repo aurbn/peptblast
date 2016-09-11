@@ -13,6 +13,14 @@ def grouper(n, iterable):
             return
         yield chunk
 
+def extract_id(s):
+    fields = s.split('|')
+    if len(fields) > 1:
+        field = fields[1]
+        return field.split('-')[0]
+    else:
+        return fields[0].split('.')[0]
+
 
 def main():
     argparser = ArgumentParser(description="Filter and merge enries")
@@ -30,8 +38,9 @@ def main():
 
     chunks = []
     for ch in grouper(7, open(argparser.one).readlines()):
-        freq = int(ch[0].split('\t')[1].split()[1])
-        if argparser.filter and freq <= argparser.filter:
+        if argparser.filter:
+            freq = int(ch[0].split('\t')[1].split()[1])
+        if  not(argparser.filter) or freq <= argparser.filter:
             hitid = ch[1].split('\t')[0]
             queryid = ch[5].split('\t')[0]
             metric = int(ch[0].split('\t')[0].split()[0])
@@ -39,8 +48,9 @@ def main():
 
 
     for ch in grouper(7, open(argparser.two).readlines()):
-        freq = int(ch[0].split('\t')[1].split()[1])
-        if argparser.filter and freq <= argparser.filter:
+        if argparser.filter:
+            freq = int(ch[0].split('\t')[1].split()[1])
+        if not(argparser.filter) or freq <= argparser.filter:
             hitid = ch[1].split('\t')[0]
             queryid = ch[5].split('\t')[0]
             a,b,c = ch[0].split('\t')[0].split()[0].split('/')
@@ -51,8 +61,8 @@ def main():
         cdict = defaultdict(list)
         tchunks = []
         for hitid, queryid, metric, ch in chunks:
-            hitid = hitid.split('|')[1].split('-')[0]
-            queryid = queryid.split('|')[1].split('-')[0]
+            hitid = extract_id(hitid)
+            queryid = extract_id(queryid)
             cdict[(hitid, queryid)].append((hitid, queryid, metric, ch))
         for k, v in cdict.items():
             maxs = -1000
