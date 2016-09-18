@@ -8,7 +8,7 @@ from shutil import copy
 from os import unlink
 from Bio import Entrez
 from time import sleep
-Entrez.email = "anatoly.urban@gmail.com"
+Entrez.email = "anatoly1urban@gmail.com"
 try:
     from tqdm import tqdm
 except:
@@ -29,7 +29,7 @@ def main():
     argparser.add_argument("infile", type = str,  help = "Peptblast output file.")
     argparser.add_argument("--count", type = str, choices = ["query", "hit"], default="query",
                            help = "Id to count")
-    argparser.add_argument("--nosort", action="store_true", help = "Doesnt sort and modify input file.")
+    argparser.add_argument("--sortfq", action="store_true", help = "Sort by occurence frequency.")
     argparser.add_argument("--table", type=str, required=False, default="table.txt",
                            help="Output table of occurrences.")
     argparser.add_argument('--nobk', action='store_true', required=False, help='Do not save backup file.')
@@ -104,6 +104,7 @@ def main():
         freqs = defaultdict(int)
         descrs = {}
         chunks = defaultdict(list)
+        chunkslist = []
         for ch in grouper(7, open(argparser.infile).readlines()):
             org = ch[5].split('\t')[2]
             if '[' in org:
@@ -111,6 +112,7 @@ def main():
                 org = org.replace(']', "")
                 org = org.strip()
                 if org in okorgs:
+                    chunkslist.append(ch)
                     orgfreqs[org] += 1
                     if argparser.count == "query":
                         id_ = ch[1].split('\t')[0]
@@ -125,14 +127,14 @@ def main():
             chunks[id_].append(ch)
 
 
-    freqs = freqs.items()
-    freqs.sort(key=itemgetter(1))
+    freqs_ = freqs.items()
+    freqs_.sort(key=itemgetter(1))
 
     if argparser.table:
         with open(argparser.table, "w") as tab:
             acc = 0
             tab.write("Count\tCountSum\tID\tDescription\n")
-            for id_, f in freqs:
+            for id_, f in freqs_:
                 acc += f
                 tab.write("%i\t%i\t%s\t%s\n" % (f, acc, id_, descrs[id_]))
 
@@ -144,18 +146,26 @@ def main():
             for fq in orgfreqs:
                 oout.write("%s\t%i\n" % fq)
 
-    if not argparser.nosort:
-        if not argparser.nobk:
-            copy(argparser.infile, argparser.infile+".bk")
+    if not argparser.nobk:
+        copy(argparser.infile, argparser.infile + ".bk")
         unlink(argparser.infile)
-        freqs = [f for f in freqs if (not argparser.le) or f[0] <= argparser.le]
 
+    if argparser.sortfq:
+        freqs = [f for f in freqs if (not argparser.le) or f[0] <= argparser.le]
         with open(argparser.infile, "w") as out:
             for id_, count in freqs:
                 for chunk in chunks[id_]:
                     out.writelines(chunk[0].replace('\n', '\t') + "occured %i times\n" % count)
                     out.writelines(chunk[1:])
-
+    else:
+        with open(argparser.infile, "w") as out:
+            for chunk in chunkslist:
+                if argparser.count == "query":
+                    id_ = chunk[1].split('\t')[0]
+                elif argparser.count == "hit":
+                    id_ = chunk[5].split('\t')[0]
+                out.writelines(chunk[0].replace('\n', '\t') + "occured %i times\n" % freqs[id_])
+                out.writelines(chunk[1:])
 
 if __name__ == '__main__':
     main()
