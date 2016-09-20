@@ -15,7 +15,7 @@ def grouper(n, iterable):
 
 
 def main():
-    argparser = ArgumentParser(description="Count id accurencies")
+    argparser = ArgumentParser(description="Split file by hit frequency.")
     argparser.add_argument("infile", type = str,  help = "Peptblast output file.")
     argparser.add_argument("head", type=int, help="Size of 'head'")
     argparser.add_argument("tail", type=int, help="Size of 'tail'")
