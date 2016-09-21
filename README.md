@@ -59,6 +59,7 @@ Lines description:
 Script performs merging _1.txt and _2.txt files produced by `peptblast.py` and basic filtration.
 
 ### Parameters ###
+
     -h, --help       show help message and exit.
     --1 ONE          continuous (_1.txt) hits file (required).
     --2 TWO          gaped (_2.txt) hits file (required).
@@ -73,6 +74,7 @@ Script performs merging _1.txt and _2.txt files produced by `peptblast.py` and b
 Adds GI annotations (fields 3) in lines 2 or 6 if not present. Modifies file in-place.
 
 ### Parameters ###
+
     infile      Peptblast output file (required).
     -h, --help  show help message and exit.
     --nobk      Do not save backup file.
@@ -84,6 +86,7 @@ Adds GI annotations (fields 3) in lines 2 or 6 if not present. Modifies file in-
 Script counts queries and hits occurrences and performs filtration. Modifies file in-place.
 
 ### Parameters ###
+
     infile                Peptblast output file (required).
     -h, --help            show help message and exit.
     --count {query,hit}   What id to count: `query` or `hit`.
@@ -97,6 +100,32 @@ Script counts queries and hits occurrences and performs filtration. Modifies fil
 ### Example command line ###
 ./counter_filter.py merged.txt --count query --table queries.txt --taxfilter bacteria --organisms organinsms.txt --le 10
 
+## descriptionfilter.py ##
+Filter entries by description of query and hit. Delete records with fraction of common words in description >'minfcommon'.
+
+### Parameters ###
+
+    infile                  Peptblast output file.
+    -h, --help              show this help message and exit
+    --wordlen WORDLEN       Minimal length of a word to consider
+    --minfcommon MINFCOMMON Minimal proportion of common words to all words in descriptions to filter out a record
+    --out OUT               Output file.
+
+### Example command line ###
+./descriptionfilter.py --wordlen 3 --minfcommon 0.5
+
+## freqsplitter.py ##
+Splits input file according to query frequencies: `head` least frequent entries into infile_head, `tail` most frequent entries into infile_tail and rest into infile_mid.
+
+### Parameters ###
+    infile      Peptblast output file.
+    head        Size of 'head'
+    tail        Size of 'tail'
+    
+### Example command line ###
+./freqsplitter.py merged.txt 50 50
+
 # Typical workflow #
-peptblast.py -> merger_filter.py -> gi_annotator.py -> counter_filter.py
+peptblast.py -> merger_filter.py -> gi_annotator.py -> descriptionfilter.py -> counter_filter.py -> freqsplitter.py
+
 
