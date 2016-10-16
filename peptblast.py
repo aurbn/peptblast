@@ -50,7 +50,7 @@ def encode(input_string):
         else:
             count += 1
     else:
-        entry = (character, count, i)
+        entry = (character, count, ii)
         lst.append(entry)
     return lst
 
@@ -112,16 +112,31 @@ def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=
     lines = []
 
     if pos2 is None:  # 5+hit
-        lines.append("%i length hit at [%i:%i]\n" % (len1, pos1+hsp.query_start,
-                                                     len1+pos1+hsp.query_start ))
+        interest_start = pos1
+        interest_end = pos1+len1
+        qstart = hsp.query_start+pos1
+        qend = hsp.query_start+pos1+len1
+        hstart = hsp.hit_start + pos1
+        hend = hsp.hit_start + pos1 + len1
+
+        lines.append("%i length hit\te=%e,ident=%i\n" % (len1, hsp.evalue, hsp.ident_num))
+
         l1 = len(qstr)
         qstr = qstr[:pos1-1]+qstr[pos1-1:pos1+len1-1].upper()+qstr[pos1+len1-1:]
         hstr = hstr[:pos1-1]+hstr[pos1-1:pos1+len1-1].upper()+hstr[pos1+len1-1:]
         sstr = sstr[:pos1-1]+sstr[pos1-1:pos1+len1-1].upper()+sstr[pos1+len1-1:]
         assert l1 == len(qstr)
     else: # complex hit
-        lines.append("%i/%i/%i hit at [%i:%i]\n" % (len1, pos2-(pos1+len1), len2, pos1+hsp.query_start,
-                                                    pos2+len2+hsp.query_start))
+        interest_start = pos1
+        interest_end = pos2+len2
+        qstart = hsp.query_start+pos1
+        qend = hsp.query_start+pos2+len2
+        hstart = hsp.hit_start+pos1
+        hend = hsp.hit_start+pos2+len2
+
+        lines.append("%i/%i/%i hit\te=%e,ident=%i\n" % (len1, pos2-(pos1+len1), len2, hsp.evalue, hsp.ident_num))
+
+
         l1 = len(qstr)
         # TODO: fix bug with end-line alignments
         qstr = qstr[:pos1-1]+qstr[pos1-1:pos1+len1-1].upper()+qstr[pos1+len1-1:pos2-1]+qstr[pos2-1:pos2+len2-1].upper()+qstr[pos2+len2-1:]
@@ -129,20 +144,31 @@ def format_alignment(hsp, pos1, len1, pos2=None, len2=None, rightgap=10, maxlen=
         sstr = sstr[:pos1-1]+sstr[pos1-1:pos1+len1-1].upper()+sstr[pos1+len1-1:pos2-1]+sstr[pos2-1:pos2+len2-1].upper()+sstr[pos2+len2-1:]
         assert l1 == len(qstr)
 
-    if pos1 > rightgap:
-        qstr = qstr[pos1-rightgap:]
-        hstr = hstr[pos1-rightgap:]
-        sstr = sstr[pos1-rightgap:]
-    if len(sstr) > maxlen:
-        # TODO: check if match more than maxlen
-        qstr = qstr[:maxlen]
-        hstr = hstr[:maxlen]
-        sstr = sstr[:maxlen]
 
-    qstr = hsp.query_id + "\t[%i : %i]\t" % (hsp.query_start, hsp.query_end) + hsp.query_description + '\n' \
+    delta = maxlen-(interest_end-interest_start)/2
+    interest_start = max(interest_start-delta, 0)
+    interest_end = min(interest_end+delta, maxlen)
+    assert interest_end-interest_start <= maxlen, "Wrong hsp length"
+    qstr = qstr[interest_start:interest_end]
+    hstr = hstr[interest_start:interest_end]
+    sstr = sstr[interest_start:interest_end]
+
+#    if pos1 > rightgap:
+#        qstr = qstr[pos1-rightgap:]
+#        hstr = hstr[pos1-rightgap:]
+#        sstr = sstr[pos1-rightgap:]
+#    if len(sstr) > maxlen:
+#        # TODO: check if match more than maxlen
+#        qstr = qstr[:maxlen]
+#        hstr = hstr[:maxlen]
+        #sstr = sstr[:maxlen]
+
+
+
+    qstr = hsp.query_id + "\t[%i : %i]\t" % (qstart, qend) + hsp.query_description + '\n' \
            + qstr
     hstr = hstr + \
-           '\n' + hsp.hit_id + "\t[%i : %i]\t" % (hsp.hit_start, hsp.hit_end) + hsp.hit_description
+           '\n' + hsp.hit_id + "\t[%i : %i]\t" % (hstart, hend) + hsp.hit_description
     qstr += '\n'
     lines.append(qstr)
     sstr += '\n'
