@@ -247,6 +247,7 @@ def read_blast_xml((file, argparser)):
 def main():
     argparser = ArgumentParser(description="Peptide/protein blast helper tool")
     argparser.add_argument('--db', type=str, required=False, help="Database.fasta")
+    argparser.add_argument('--idb', type=str, required=False, help="Indexed database.fasta")
     argparser.add_argument('--pep', type=str, required=False, help="Peptides.fasta")
     argparser.add_argument('--cont', type=int, required=False, default=5, help="Minimal length of continuous fragment")
     argparser.add_argument('--leftmin', type=int, required=False, default=3, help="Minimal length of left fragment")
@@ -274,24 +275,27 @@ def main():
             print("Wrong tmp directory!")
             sys.exit(1)
     else:
-        if (argparser.pep is None) or (argparser.pep is None):
+        if (argparser.pep is None) or (argparser.db is None and argparser.idb is None):
             print ("Provide query and database or use tmp dir!")
             sys.exit(1)
 
 
     if os.path.exists(TMP_DIR) and not argparser.usetmp:
         shutil.rmtree(TMP_DIR)
-    elif not argparser.usetmp:
+    if not argparser.usetmp:
         os.mkdir(TMP_DIR)
 
     if not argparser.usetmp:
-        db_name = os.path.join(TMP_DIR, argparser.db)
-        makeblastdb(argparser.db, db_name)
+        if argparser.idb:
+            db_name = argparser.idb
+        else:
+            db_name = os.path.join(TMP_DIR, argparser.db)
+            makeblastdb(argparser.db, db_name)
         parallel_blast(argparser, db_name)
 
 
-    with open(argparser.pep + "_" + argparser.db + "_1.txt", "w") as out1, \
-         open(argparser.pep + "_" + argparser.db + "_2.txt", "w") as out2:
+    with open(argparser.pep + "_" + db_name.split("/")[-1] + "_1.txt", "w") as out1, \
+         open(argparser.pep + "_" + db_name.split("/")[-1] + "_2.txt", "w") as out2:
         pool = multiprocessing.Pool(processes=argparser.threads)
         results1, results2 = zip(*pool.map(read_blast_xml, zip(getfiles(TMP_DIR, "xml"),
                                                itertools.repeat(argparser))))
