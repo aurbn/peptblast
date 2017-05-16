@@ -191,7 +191,10 @@ def parallel_blast(argparser, db_name):
     nrec = int(nrec)
     assert nrec > 0
 
-    chunksize = nrec / argparser.threads
+    if argparser.chunksize:
+        chunksize = argparser.chunksize
+    else:
+        chunksize = nrec / argparser.threads
     chunksize = chunksize if chunksize else nrec
     inp = SeqIO.parse(open(argparser.pep), "fasta")
 
@@ -255,6 +258,7 @@ def main():
     argparser.add_argument('--summin', type=int, required=False, default=8, help="Minimal total mathed length")
     argparser.add_argument('--gapmax', type=int, required=False, default=3, help="Minimal gap size")
     argparser.add_argument('--threads', type=int, required=False, default=4, help="Blast threads")
+    argparser.add_argument('--chunksize', type=int, required=False, default=None, help="Force split in chunksize")
     argparser.add_argument('--eval', type=float, required=False, help="Required e-value for blast, otherwise estimated")
     argparser.add_argument('--wordsize', type=int, required=False, default=2, help="Blast word size")
     argparser.add_argument('-s', action='store_true', required=False, help='Use blast-short instead of blast.')
